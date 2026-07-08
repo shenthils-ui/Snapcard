@@ -19,6 +19,18 @@ const ORIGIN = `http://localhost:${PORT}`;
 const APP = ORIGIN + SUBPATH;
 const CHROME = process.env.SNAPCARD_CHROME || '/opt/pw-browsers/chromium';
 
+console.log('=== crypto: encrypt/decrypt round-trips a photo-sized backup');
+{
+  const { encryptJson, decryptJson } = await import('../src/drive/crypto.js');
+  // ~600 KB of base64-ish payload, the size of a backup carrying card photos
+  const big = { format: 'snapcard-backup', cards: [{ front_image: 'data:image/jpeg;base64,' + 'A'.repeat(600 * 1024) }] };
+  const sealed = await encryptJson(big, 'pass phrase');
+  assert.equal(JSON.parse(sealed).snapcard_encrypted, 1);
+  assert.deepEqual(await decryptJson(sealed, 'pass phrase'), big, 'large payload round-trips');
+  await assert.rejects(decryptJson(sealed, 'wrong'), 'wrong passphrase rejected');
+  console.log('large-payload encryption ok');
+}
+
 console.log('=== build standalone target with test Drive client id');
 execSync('npm run build:standalone', {
   cwd: ROOT,

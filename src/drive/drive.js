@@ -88,7 +88,6 @@ function redirectSignIn() {
     response_type: 'token',
     scope: SCOPE,
     include_granted_scopes: 'true',
-    prompt: '',
     state: 'snapcard-oauth',
   });
   window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);

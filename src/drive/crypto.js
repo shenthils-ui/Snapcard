@@ -3,7 +3,16 @@
 // When enabled, Google never sees readable card data.
 const ITERATIONS = 310000;
 
-const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+// Chunked: spreading a whole ciphertext into fromCharCode blows the call
+// stack once backups carry card photos (hundreds of KB).
+function b64(buf) {
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
 const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 async function deriveKey(passphrase, salt) {
