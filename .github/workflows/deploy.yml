@@ -2,7 +2,10 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    # claude/new-session-9x5bp9 is listed because it is currently the repo's
+    # default branch, and the github-pages environment only accepts deploys
+    # from the default branch. Safe to remove once main is made the default.
+    branches: [main, claude/new-session-9x5bp9]
   workflow_dispatch:
 
 permissions:
