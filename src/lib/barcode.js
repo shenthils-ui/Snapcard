@@ -1,6 +1,6 @@
 // Rendering codes on screen with bwip-js: one client-side library covering
-// every supported 1D and 2D format, fully offline.
-import bwipjs from 'bwip-js';
+// every supported 1D and 2D format, fully offline. Dynamically imported so it
+// doesn't weigh down the initial page load.
 
 // code_format (zxing-style names, stored in the DB) -> bwip-js bcid
 const BWIP_BCID = {
@@ -30,8 +30,9 @@ function renderValue(format, value) {
   return v;
 }
 
-// Draws the code onto the given canvas. Throws if the value is invalid for the format.
-export function drawCode(canvas, format, value) {
+// Draws the code onto the given canvas. Rejects if the value is invalid for the format.
+export async function drawCode(canvas, format, value) {
+  const { default: bwipjs } = await import('bwip-js');
   const bcid = BWIP_BCID[format];
   if (!bcid) throw new Error(`unsupported format: ${format}`);
   const twoD = TWO_D_FORMATS.has(format);

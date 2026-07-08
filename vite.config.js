@@ -44,6 +44,10 @@ export default defineConfig(({ mode }) => {
       target: 'es2022',
       emptyOutDir: true,
     },
+    server: {
+      // `npm run dev` (server mode) proxies data calls to the Express backend.
+      proxy: standalone ? undefined : { '/api': 'http://localhost:8787' },
+    },
     plugins: [
       react(),
       tailwindcss(),

@@ -10,7 +10,8 @@
     "build:standalone": "vite build --mode standalone",
     "start": "node server/index.js",
     "smoke": "node scripts/smoke-engines.mjs",
-    "verify": "node scripts/smoke-engines.mjs && node scripts/verify-server.mjs && node scripts/verify-standalone.mjs && node scripts/verify-drive.mjs"
+    "verify": "node scripts/smoke-engines.mjs && node scripts/verify-server.mjs && node scripts/verify-standalone.mjs && node scripts/verify-drive.mjs",
+    "dev:standalone": "vite --mode standalone"
   },
   "repository": {
     "type": "git",

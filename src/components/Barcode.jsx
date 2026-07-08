@@ -9,12 +9,13 @@ export default function Barcode({ format, value, className }) {
 
   useEffect(() => {
     if (!canvasRef.current || !value) return;
-    try {
-      drawCode(canvasRef.current, format, value);
-      setError(null);
-    } catch {
-      setError(t('render_error', { format }));
-    }
+    let alive = true;
+    drawCode(canvasRef.current, format, value)
+      .then(() => alive && setError(null))
+      .catch(() => alive && setError(t('render_error', { format })));
+    return () => {
+      alive = false;
+    };
   }, [format, value, t]);
 
   if (error) {
