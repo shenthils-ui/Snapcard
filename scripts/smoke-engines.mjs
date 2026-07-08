@@ -100,3 +100,11 @@ fs.rmSync(tmp, { force: true });
 ['-wal', '-shm'].forEach((s) => fs.rmSync(tmp + s, { force: true }));
 
 console.log('✓ both engines run identical shared logic');
+
+// 4. i18n: every language ships the full key set (no silent English fallbacks)
+const { STRINGS } = await import('../src/i18n/strings.js');
+const enKeys = Object.keys(STRINGS.en).sort();
+for (const [lang, dict] of Object.entries(STRINGS)) {
+  assert.deepEqual(Object.keys(dict).sort(), enKeys, `i18n: '${lang}' has the same keys as 'en'`);
+}
+console.log(`✓ i18n dictionaries complete (${Object.keys(STRINGS).join(', ')})`);
