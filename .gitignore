@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-standalone/
+dev-dist/
+data/
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.local
