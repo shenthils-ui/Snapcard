@@ -176,6 +176,67 @@ try {
   await ctxB.close();
 
   // ===========================================================================
+  step('settings flows: app lock (PIN), language, theme, UI export/import');
+  const ctxD = await browser.newContext();
+  await guardExternal(ctxD);
+  const pageD = await ctxD.newPage();
+  pageD.on('dialog', (d) => d.accept());
+  await pageD.goto(APP);
+  await pageD.waitForSelector('[data-testid="card-tile"]');
+  await pageD.goto(APP + 'settings');
+
+  // language: switching to Dutch swaps the dictionary
+  await pageD.selectOption('[data-testid="language-select"]', 'nl');
+  await pageD.waitForFunction(() => document.body.innerText.includes('Instellingen'));
+  await pageD.selectOption('[data-testid="language-select"]', 'en');
+  await pageD.waitForFunction(() => document.body.innerText.includes('Settings'));
+  console.log('language switch (en <-> nl) ok');
+
+  // theme: explicit dark mode toggles the root class
+  await pageD.click('[data-testid="theme-dark"]');
+  await pageD.waitForFunction(() => document.documentElement.classList.contains('dark'));
+  await pageD.click('[data-testid="theme-light"]');
+  await pageD.waitForFunction(() => !document.documentElement.classList.contains('dark'));
+  console.log('theme toggle ok');
+
+  // export through the UI download, then import the same file back
+  const [download] = await Promise.all([pageD.waitForEvent('download'), pageD.click('[data-testid="export-json"]')]);
+  const exportedPath = await download.path();
+  const exported = JSON.parse(fs.readFileSync(exportedPath, 'utf8'));
+  assert.equal(exported.format, 'snapcard-backup', 'UI export produces a valid backup file');
+  assert.equal(exported.cards.length, 3, 'UI export contains the cards');
+  await pageD.setInputFiles('[data-testid="import-json-input"]', exportedPath);
+  await pageD.waitForSelector('[data-testid="settings-msg"]');
+  assert.ok(
+    (await pageD.textContent('[data-testid="settings-msg"]')).includes('3'),
+    'UI import reports the imported card count'
+  );
+  console.log('UI export -> import round-trip ok');
+
+  // app lock: set a PIN, reload -> locked; wrong PIN rejected, right PIN unlocks
+  await pageD.fill('[data-testid="pin-input"]', '4321');
+  await pageD.click('[data-testid="pin-save"]');
+  await pageD.waitForFunction(() => document.querySelector('[data-testid="pin-input"]').value === '');
+  await pageD.reload();
+  await pageD.waitForSelector('[data-testid="lock-pin"]');
+  await pageD.fill('[data-testid="lock-pin"]', '9999');
+  await pageD.click('[data-testid="lock-unlock"]');
+  await pageD.waitForFunction(() => document.querySelector('[data-testid="lock-pin"]').value === '');
+  assert.ok(await pageD.locator('[data-testid="lock-pin"]').isVisible(), 'wrong PIN stays locked');
+  await pageD.fill('[data-testid="lock-pin"]', '4321');
+  await pageD.click('[data-testid="lock-unlock"]');
+  // unlock returns to the screen the reload happened on (settings)
+  await pageD.waitForSelector('[data-testid="settings-screen"]');
+  // a fresh navigation boots again and must re-lock; unlock lands on the grid
+  await pageD.goto(APP);
+  await pageD.waitForSelector('[data-testid="lock-pin"]');
+  await pageD.fill('[data-testid="lock-pin"]', '4321');
+  await pageD.click('[data-testid="lock-unlock"]');
+  await pageD.waitForSelector('[data-testid="card-tile"]');
+  console.log('app lock set / wrong PIN rejected / correct PIN unlocks ok');
+  await ctxD.close();
+
+  // ===========================================================================
   step('service worker registers; app fully works offline');
   const ctxC = await browser.newContext();
   const pageC = await ctxC.newPage();
