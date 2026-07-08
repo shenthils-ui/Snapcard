@@ -2,7 +2,7 @@ node_modules/
 dist/
 dist-standalone/
 dev-dist/
-data/
+/data/
 *.db
 *.db-wal
 *.db-shm
