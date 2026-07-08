@@ -31,6 +31,9 @@ jobs:
         run: |
           VITE_BASE="/${GITHUB_REPOSITORY#*/}/" npm run build:standalone
       - uses: actions/configure-pages@v5
+        with:
+          # Enable Pages (source: GitHub Actions) automatically on first deploy.
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist-standalone
