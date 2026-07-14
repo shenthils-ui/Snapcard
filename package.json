@@ -11,7 +11,8 @@
     "start": "node server/index.js",
     "smoke": "node scripts/smoke-engines.mjs",
     "verify": "node scripts/smoke-engines.mjs && node scripts/verify-server.mjs && node scripts/verify-standalone.mjs && node scripts/verify-drive.mjs",
-    "dev:standalone": "vite --mode standalone"
+    "dev:standalone": "vite --mode standalone",
+    "lint": "eslint ."
   },
   "repository": {
     "type": "git",
@@ -34,8 +35,12 @@
     "sql.js": "^1.14.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.2",
     "@vitejs/plugin-react": "^6.0.3",
+    "eslint": "^10.7.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.7.0",
     "playwright-core": "^1.61.1",
     "tailwindcss": "^4.3.2",
     "vite": "^8.1.3",

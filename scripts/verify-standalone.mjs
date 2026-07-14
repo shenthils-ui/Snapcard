@@ -9,13 +9,17 @@
 //   6. a card can be added by decoding an image via the scanner path
 //   7. Drive (stubbed token client + endpoints): upload/download round-trips
 //      exactly, including the encrypted path
+//   8. the grid sort preference persists across a reload
+//   9. app lock re-locks after the app is backgrounded past the grace window
+//  10. the iOS install hint appears (iOS UA) and is dismissible/persistent,
+//      and does not appear for a desktop UA
 // Re-run any time with: node scripts/verify-standalone.mjs
 import { execSync } from 'node:child_process';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright-core';
+import { chromium, devices } from 'playwright-core';
 import bwipjs from 'bwip-js';
 
 const ROOT = path.resolve(new URL('..', import.meta.url).pathname);
@@ -235,6 +239,89 @@ try {
   await pageD.waitForSelector('[data-testid="card-tile"]');
   console.log('app lock set / wrong PIN rejected / correct PIN unlocks ok');
   await ctxD.close();
+
+  // ===========================================================================
+  step('grid sort preference persists across reload');
+  const ctxE = await browser.newContext();
+  await guardExternal(ctxE);
+  const pageE = await ctxE.newPage();
+  await pageE.goto(APP);
+  await pageE.waitForSelector('[data-testid="grid-sort"]');
+  await pageE.selectOption('[data-testid="grid-sort"]', 'name');
+  await pageE.waitForTimeout(300); // let the setMeta write flush
+  await pageE.reload();
+  await pageE.waitForSelector('[data-testid="grid-sort"]');
+  await pageE.waitForFunction(() => document.querySelector('[data-testid="grid-sort"]').value === 'name', null, {
+    timeout: 5000,
+  });
+  console.log('sort preference persisted ok');
+  await ctxE.close();
+
+  // ===========================================================================
+  step('app lock re-locks after backgrounding past the grace window');
+  const ctxF = await browser.newContext();
+  await guardExternal(ctxF);
+  const pageF = await ctxF.newPage();
+  pageF.on('dialog', (d) => d.accept());
+  await pageF.clock.install();
+  await pageF.goto(APP);
+  await pageF.waitForSelector('[data-testid="card-tile"]');
+  await pageF.goto(APP + 'settings');
+  await pageF.fill('[data-testid="pin-input"]', '2468');
+  await pageF.click('[data-testid="pin-save"]');
+  await pageF.waitForFunction(() => document.querySelector('[data-testid="pin-input"]').value === '');
+  // background the app, let more than the grace window pass, then return
+  await pageF.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await pageF.clock.fastForward(61_000);
+  await pageF.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await pageF.waitForSelector('[data-testid="lock-pin"]', { timeout: 5000 });
+  // a brief background (under the grace window) must NOT re-lock
+  await pageF.fill('[data-testid="lock-pin"]', '2468');
+  await pageF.click('[data-testid="lock-unlock"]');
+  await pageF.waitForSelector('[data-testid="settings-screen"]');
+  await pageF.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await pageF.clock.fastForward(5_000);
+  await pageF.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await pageF.waitForTimeout(200);
+  assert.equal(await pageF.locator('[data-testid="lock-pin"]').count(), 0, 'brief background does not re-lock');
+  console.log('re-lock after long background ok; brief background does not nag');
+  await ctxF.close();
+
+  // ===========================================================================
+  step('iOS install hint shows + dismisses; desktop does not show it');
+  const ctxIos = await browser.newContext({ ...devices['iPhone 13'] });
+  await guardExternal(ctxIos);
+  const pageIos = await ctxIos.newPage();
+  await pageIos.goto(APP);
+  await pageIos.waitForSelector('[data-testid="card-tile"]');
+  assert.equal(await pageIos.locator('[data-testid="install-hint"]').count(), 1, 'install hint shows on iOS');
+  await pageIos.click('[data-testid="install-hint-dismiss"]');
+  assert.equal(await pageIos.locator('[data-testid="install-hint"]').count(), 0, 'dismiss hides it');
+  await pageIos.reload();
+  await pageIos.waitForSelector('[data-testid="card-tile"]');
+  assert.equal(await pageIos.locator('[data-testid="install-hint"]').count(), 0, 'dismissal persists across reload');
+  await ctxIos.close();
+
+  const ctxDesk = await browser.newContext();
+  await guardExternal(ctxDesk);
+  const pageDesk = await ctxDesk.newPage();
+  await pageDesk.goto(APP);
+  await pageDesk.waitForSelector('[data-testid="card-tile"]');
+  assert.equal(await pageDesk.locator('[data-testid="install-hint"]').count(), 0, 'no install hint on desktop');
+  console.log('install hint behaviour ok');
+  await ctxDesk.close();
 
   // ===========================================================================
   step('service worker registers; app fully works offline');
