@@ -9,6 +9,19 @@ Both versions use the **identical data format**: a backup exported from either i
 
 **Privacy:** the core app makes **zero external network calls** at runtime. The only permitted external calls are optional Google Drive backup, and only after you sign in and enable it. Scanning, rendering, and storage all work fully offline.
 
+## Documentation
+
+| Guide | For |
+|---|---|
+| [Quick Start](docs/QUICKSTART.md) | Get productive in under ten minutes |
+| [User Guide](docs/USER_GUIDE.md) | Every screen, workflow, and FAQ for end users |
+| [Configuration](docs/CONFIGURATION.md) | Environment variables and Google Drive setup |
+| [Developer Guide](docs/DEVELOPER_GUIDE.md) | Architecture, conventions, testing, extending |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Install, camera, storage, Drive, and deploy issues |
+| [Changelog](CHANGELOG.md) | What changed and when |
+
+The sections below are a condensed version of those guides.
+
 ---
 
 ## Running on the laptop (Windows)
@@ -67,7 +80,8 @@ npm run dev               # Vite dev server (server-build mode, needs `npm start
 npm start                 # Express + better-sqlite3 backend on :8787
 npm run build             # server-target frontend -> dist/
 npm run build:standalone  # standalone target (sql.js in the browser) -> dist-standalone/
-npm run smoke             # shared logic against BOTH engines (Node, fast)
+npm run lint              # ESLint (flat config + React Hooks rules)
+npm run smoke             # shared logic against BOTH engines + i18n key parity (Node, fast)
 npm run verify            # full end-to-end verification (see below)
 ```
 
