@@ -32,8 +32,9 @@ function BootGate({ children }) {
   const [state, setState] = useState('loading'); // loading | ready | locked | server-down | failed
   const [, setTick] = useState(0);
 
-  const boot = useCallback(async () => {
-    setState('loading');
+  // The worker awaits before touching state, so the mount effect never calls
+  // setState synchronously (which would trigger a cascading render).
+  const runBoot = useCallback(async () => {
     try {
       await initData();
       setState((await isLockEnabled()) ? 'locked' : 'ready');
@@ -42,9 +43,19 @@ function BootGate({ children }) {
     }
   }, []);
 
+  // Retry from an error screen: show the spinner again, then re-run boot.
+  const retry = useCallback(() => {
+    setState('loading');
+    runBoot();
+  }, [runBoot]);
+
   useEffect(() => {
-    boot();
-  }, [boot]);
+    // runBoot only calls setState after awaiting async work (the data-load-on-
+    // mount pattern the React docs sanction); the rule can't see the await
+    // boundary and flags the transitive setState, so suppress it here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    runBoot();
+  }, [runBoot]);
 
   if (state === 'loading')
     return (
@@ -58,7 +69,7 @@ function BootGate({ children }) {
         title={t('server_unreachable_title')}
         hint={t('server_unreachable_hint')}
         button={t('retry')}
-        onAction={boot}
+        onAction={retry}
       />
     );
   if (state === 'failed')
