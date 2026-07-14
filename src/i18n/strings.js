@@ -130,6 +130,9 @@ export const STRINGS = {
     server_unreachable_hint: 'Is the server still running on the laptop? Start it with start.bat, then retry.',
     retry: 'Retry',
     loading: 'Loading…',
+    // install hint (iOS)
+    install_hint: 'Install Snapcard: tap the Share button, then “Add to Home Screen”.',
+    install_hint_dismiss: 'Dismiss',
   },
 
   nl: {
@@ -253,5 +256,7 @@ export const STRINGS = {
     server_unreachable_hint: 'Draait de server nog op de laptop? Start hem met start.bat en probeer opnieuw.',
     retry: 'Opnieuw',
     loading: 'Laden…',
+    install_hint: 'Installeer Snapcard: tik op de deelknop en daarna op “Zet op beginscherm”.',
+    install_hint_dismiss: 'Sluiten',
   },
 };

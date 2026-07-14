@@ -9,8 +9,14 @@ import ShowScreen from './screens/ShowScreen.jsx';
 import EditScreen from './screens/EditScreen.jsx';
 import SettingsScreen from './screens/SettingsScreen.jsx';
 import LockScreen from './components/LockScreen.jsx';
+import InstallHint from './components/InstallHint.jsx';
 
 const BASENAME = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/';
+
+// When app lock is on, re-require the PIN if the app was in the background
+// longer than this. Short enough to protect a lost/handed-over phone, long
+// enough that glancing away at a till or a quick app-switch doesn't nag.
+const RELOCK_AFTER_MS = 60_000;
 
 function ErrorScreen({ title, hint, button, onAction }) {
   return (
@@ -57,6 +63,29 @@ function BootGate({ children }) {
     runBoot();
   }, [runBoot]);
 
+  // Auto re-lock: if the app is backgrounded longer than the grace window and a
+  // PIN is set, require it again on return. Lock status is queried on return
+  // (not cached at boot) so a PIN enabled mid-session takes effect immediately.
+  // setState here is inside an async event handler, not the effect body, so it
+  // is not a cascading-render risk.
+  useEffect(() => {
+    let hiddenAt = null;
+    const onVisibility = async () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+        return;
+      }
+      if (hiddenAt == null) return;
+      const away = Date.now() - hiddenAt;
+      hiddenAt = null;
+      if (away >= RELOCK_AFTER_MS && (await isLockEnabled())) {
+        setState((s) => (s === 'ready' ? 'locked' : s));
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
   if (state === 'loading')
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100 dark:bg-slate-900">
@@ -88,7 +117,13 @@ function BootGate({ children }) {
 function ThemedApp() {
   const [theme, setThemeState] = useState('system');
   const [langLoaded, setLangLoaded] = useState(false);
-  const { setLang } = useI18n();
+  const { lang, setLang } = useI18n();
+
+  // Keep the document language in sync so assistive tech announces content
+  // correctly (index.html ships a static default; this reflects the real choice).
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   // Load persisted preferences once the data layer is up (BootGate renders us after init).
   useEffect(() => {
@@ -129,17 +164,20 @@ function ThemedApp() {
   if (!langLoaded) return null;
 
   return (
-    <Routes>
-      <Route path="/" element={<GridScreen />} />
-      <Route path="/add" element={<EditScreen />} />
-      <Route path="/card/:id" element={<ShowScreen />} />
-      <Route path="/card/:id/edit" element={<EditScreen />} />
-      <Route
-        path="/settings"
-        element={<SettingsScreen theme={theme} setTheme={setTheme} storagePersisted={storagePersisted} />}
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<GridScreen />} />
+        <Route path="/add" element={<EditScreen />} />
+        <Route path="/card/:id" element={<ShowScreen />} />
+        <Route path="/card/:id/edit" element={<EditScreen />} />
+        <Route
+          path="/settings"
+          element={<SettingsScreen theme={theme} setTheme={setTheme} storagePersisted={storagePersisted} />}
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <InstallHint />
+    </>
   );
 }
 

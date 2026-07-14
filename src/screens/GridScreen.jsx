@@ -3,6 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { call, onDataChanged } from '../data/client.js';
 import { useI18n } from '../i18n/index.jsx';
 
+// Valid sort keys, mirrored in shared/store.js. Used to validate the persisted
+// preference before applying it.
+const SORT_OPTIONS = { recent: 1, name: 1, store: 1 };
+
 function CardTile({ card, onOpen }) {
   const title = card.label || card.store_name;
   return (
@@ -27,6 +31,22 @@ export default function GridScreen() {
   const [cards, setCards] = useState(null);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('recent');
+
+  // Restore the last-used sort so the grid opens the way the user left it.
+  useEffect(() => {
+    let alive = true;
+    call('getMeta', 'grid_sort').then((saved) => {
+      if (alive && saved && saved in SORT_OPTIONS) setSort(saved);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const changeSort = (value) => {
+    setSort(value);
+    call('setMeta', 'grid_sort', value).catch(() => {});
+  };
 
   useEffect(() => {
     let alive = true;
@@ -67,7 +87,7 @@ export default function GridScreen() {
         />
         <select
           value={sort}
-          onChange={(e) => setSort(e.target.value)}
+          onChange={(e) => changeSort(e.target.value)}
           data-testid="grid-sort"
           aria-label="sort"
           className="rounded-xl border border-slate-300 bg-white px-2 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
